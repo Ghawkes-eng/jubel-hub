@@ -77,15 +77,19 @@ export const authOptions: NextAuthOptions = {
 (session as any).googleId     = token.googleId
       if (token.error) (session as any).error = token.error
 
-      if (session.user?.email) {
-        await supabase.from('users').upsert({
-          email:     session.user.email,
-          name:      session.user.name,
-          image:     session.user.image,
-          google_id: session.googleId,
-        }, { onConflict: 'email' })
-      }
-      return session
+     if (session.user?.email) {
+  try {
+    await supabase.from('users').upsert({
+      email:     session.user.email,
+      name:      session.user.name,
+      image:     session.user.image,
+      google_id: (session as any).googleId,
+    }, { onConflict: 'email' })
+  } catch (e) {
+    console.error('User upsert failed:', e)
+  }
+}
+return session
     },
 
     async signIn({ profile }) {
