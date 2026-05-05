@@ -21,8 +21,7 @@ const WS_ST = [
 const ACTIVE_STATUSES  = ['active','on-hold','blocked']
 const CLOSED_STATUSES  = ['complete','archived']
 
-const NL = String.fromCharCode(10)
-
+// ── Client-side Google API calls ─────────────────────────────────────────────
 async function fetchGmailContext(accessToken: string, query: string): Promise<string> {
   try {
     const listRes = await fetch(
@@ -36,6 +35,7 @@ async function fetchGmailContext(accessToken: string, query: string): Promise<st
     const data = await listRes.json()
     const messages = data.messages || []
     if (!messages.length) return `No emails found mentioning "${query.split(' ')[0]}"`
+
     const snippets: string[] = []
     for (const msg of messages.slice(0,5)) {
       const msgRes = await fetch(
@@ -49,7 +49,7 @@ async function fetchGmailContext(accessToken: string, query: string): Promise<st
         snippets.push(`"${hdrs.Subject||'(no subject)'}" from ${hdrs.From||'unknown'} — ${m.snippet||''}`)
       }
     }
-    return snippets.join(NL)
+    return snippets.join(String.fromCharCode(10))
   } catch (e: any) {
     return `Gmail exception: ${e.message}`
   }
@@ -71,12 +71,13 @@ async function fetchDriveContext(accessToken: string, wsName: string): Promise<s
     if (!files.length) return `No Drive files found mentioning "${wsName}"`
     return files.map((f: any) =>
       `"${f.name}" — modified ${f.modifiedTime ? new Date(f.modifiedTime).toLocaleDateString('en-GB') : 'unknown'}`
-    ).join(NL)
+    ).join(String.fromCharCode(10))
   } catch (e: any) {
     return `Drive exception: ${e.message}`
   }
 }
 
+// ── Read a Google Sheet directly by URL ──────────────────────────────────────
 function extractSheetId(url: string): string | null {
   const match = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/)
   return match ? match[1] : null
@@ -85,7 +86,9 @@ function extractSheetId(url: string): string | null {
 async function fetchSheetContext(accessToken: string, sheetUrl: string, wsName: string): Promise<string> {
   const sheetId = extractSheetId(sheetUrl)
   if (!sheetId) return 'Invalid Sheet URL — paste the full Google Sheets URL'
+
   try {
+    // Get sheet metadata first to find tab names
     const metaRes = await fetch(
       `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}?fields=properties,sheets.properties`,
       { headers: { Authorization: `Bearer ${accessToken}` } }
@@ -96,6 +99,8 @@ async function fetchSheetContext(accessToken: string, sheetUrl: string, wsName: 
     }
     const meta = await metaRes.json()
     const title = meta.properties?.title || 'Sheet'
+
+    // Read first sheet (up to 200 rows)
     const firstSheet = meta.sheets?.[0]?.properties?.title || 'Sheet1'
     const dataRes = await fetch(
       `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(firstSheet)}!A1:Z200`,
@@ -108,6 +113,8 @@ async function fetchSheetContext(accessToken: string, sheetUrl: string, wsName: 
     const data = await dataRes.json()
     const rows: string[][] = data.values || []
     if (!rows.length) return `Sheet "${title}" appears to be empty`
+
+    // Format as readable text — headers + first 30 data rows
     const headers = rows[0] || []
     const dataRows = rows.slice(1, 31)
     const formatted = [
@@ -117,7 +124,8 @@ async function fetchSheetContext(accessToken: string, sheetUrl: string, wsName: 
       ...dataRows.map(row =>
         headers.map((h, i) => `${h}: ${row[i] || ''}`).filter((_,i) => row[i]).join(' | ')
       ).filter(Boolean)
-    ].join(NL)
+    ].join(String.fromCharCode(10))
+
     return formatted
   } catch (e: any) {
     return `Sheet exception: ${e.message}`
@@ -138,7 +146,7 @@ export default function WorkstreamsPage() {
   const [summarising, setSummarising] = useState<string|null>(null)
   const [savingAll, setSavingAll] = useState(false)
   const [toast, setToast] = useState<string|null>(null)
-  const [editState, setEditState] = useState<Record<string,{ additionalContext:string, briefing:string, sheetUrl:string, sheetUrl2:string }>>({})
+  const [editState, setEditState] = useState<Record<string,{ additionalContext:string, briefing:string }>>({})
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/')
@@ -182,21 +190,27 @@ export default function WorkstreamsPage() {
     fetchData()
   }
 
+  // ── Pull context — runs in browser, uses session.gAccessToken directly ──
   async function pullContext(ws: any) {
-    const accessToken = (session as any)?.accessToken
+    const accessToken = (session as any)?.gAccessToken
     if (!accessToken) { showToast('No Google access token — sign out and back in'); return }
+
     setPulling(ws.id)
     showToast(`Pulling context for ${ws.name}…`)
+
     const es = getES(ws.id)
     const searchQuery = [ws.name, es.additionalContext?.slice(0,80)].filter(Boolean).join(' ')
+
     const [gmailText, driveText] = await Promise.all([
       fetchGmailContext(accessToken, searchQuery),
       fetchDriveContext(accessToken, ws.name),
     ])
+
     const combined = [
-      gmailText ? `Gmail:${NL}${gmailText}` : '',
-      driveText ? `Drive:${NL}${driveText}` : '',
-    ].filter(Boolean).join(NL + NL)
+      gmailText ? `Gmail:\n${gmailText}` : '',
+      driveText ? `Drive:\n${driveText}` : '',
+    ].filter(Boolean).join('\n\n')
+
     await updateWs(ws.id, { context_note: combined, context_at: new Date().toISOString() })
     showToast('Context pulled ✓')
     setPulling(null)
@@ -211,31 +225,38 @@ export default function WorkstreamsPage() {
     const d = await res.json()
     if (d.error && !d.text) { showToast('Slack: ' + d.error); return }
     const text = d.text || d.error
-    const combined = (ws.context_note ? ws.context_note + NL + NL + 'Slack:' + NL : 'Slack:' + NL) + text
+    const combined = (ws.context_note ? ws.context_note + `\n\nSlack:\n` : `Slack:\n`) + text
     await updateWs(ws.id, { context_note: combined, context_at: new Date().toISOString() })
     showToast('Slack context added ✓')
   }
 
   async function pullSheet(ws: any) {
-    const accessToken = (session as any)?.accessToken
+    const accessToken = (session as any)?.gAccessToken
     const es = getES(ws.id)
     if (!es.sheetUrl) { showToast('Add a Sheet URL to this workstream first'); return }
     if (!accessToken) { showToast('No Google access token — sign out and back in'); return }
+
     showToast(`Reading sheet for ${ws.name}…`)
     const sheetText = await fetchSheetContext(accessToken, es.sheetUrl, ws.name)
-    const combined = (ws.context_note ? ws.context_note + NL + NL + 'Sheet data:' + NL : 'Sheet data:' + NL) + sheetText
-    await updateWs(ws.id, { context_note: combined, context_at: new Date().toISOString(), sheet_url: es.sheetUrl })
+
+    // Append to existing context
+    const combined = (ws.context_note ? ws.context_note + `\n\nSheet data:\n` : `Sheet data:\n`) + sheetText
+    await updateWs(ws.id, {
+      context_note: combined,
+      context_at: new Date().toISOString(),
+      sheet_url: es.sheetUrl,
+    })
     showToast('Sheet data pulled ✓')
   }
 
   async function pullSheet2(ws: any) {
-    const accessToken = (session as any)?.accessToken
+    const accessToken = (session as any)?.gAccessToken
     const es = getES(ws.id)
     if (!es.sheetUrl2) { showToast('Add a second Sheet URL first'); return }
     if (!accessToken) { showToast('No Google access token — sign out and back in'); return }
     showToast(`Reading second sheet for ${ws.name}…`)
     const sheetText = await fetchSheetContext(accessToken, es.sheetUrl2, ws.name)
-    const combined = (ws.context_note ? ws.context_note + NL + NL + 'Sheet 2 data:' + NL : 'Sheet 2 data:' + NL) + sheetText
+    const combined = (ws.context_note ? ws.context_note + `\n\nSheet 2 data:\n` : `Sheet 2 data:\n`) + sheetText
     await updateWs(ws.id, { context_note: combined, context_at: new Date().toISOString(), sheet_url_2: es.sheetUrl2 })
     showToast('Second sheet data pulled ✓')
   }
@@ -248,6 +269,7 @@ export default function WorkstreamsPage() {
     }
     setSummarising(ws.id)
     showToast(`Summarising ${ws.name}…`)
+
     const res = await fetch('/api/ai/summarise-context', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
@@ -259,6 +281,7 @@ export default function WorkstreamsPage() {
     })
     const d = await res.json()
     if (d.error) { showToast('Error: '+d.error); setSummarising(null); return }
+
     setField(ws.id, 'briefing', d.text)
     await updateWs(ws.id, { briefing: d.text, briefing_at: new Date().toISOString() })
     showToast('Briefing updated ✓')
@@ -303,6 +326,7 @@ export default function WorkstreamsPage() {
       <div key={ws.id} className="bg-white rounded-lg border border-[#E5E5E5] mb-2 overflow-hidden"
         style={{borderLeft:`4px solid ${isClosed?'#ccc':cat.color}`,opacity:isClosed?0.8:1}}>
 
+        {/* Header */}
         <div className="flex items-center gap-3 px-4 py-3 cursor-pointer"
           onClick={()=>setExpandedId(expanded?null:ws.id)}>
           <span className="text-xs text-[#999]">{expanded?'▾':'▸'}</span>
@@ -322,6 +346,8 @@ export default function WorkstreamsPage() {
 
         {expanded&&(
           <div className="border-t border-[#F0F0F0] p-4 space-y-4">
+
+            {/* Meta */}
             <div className="flex gap-3 flex-wrap text-xs text-[#999]">
               {ws.owner&&<span>👤 {ws.owner}</span>}
               {ws.deadline&&<span>⏱ {new Date(ws.deadline).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</span>}
@@ -329,20 +355,23 @@ export default function WorkstreamsPage() {
             </div>
             {ws.notes&&<p className="text-xs text-[#999] italic">{ws.notes}</p>}
 
+            {/* Additional context */}
             <div>
               <div className="text-[10px] font-mono uppercase tracking-widest text-[#999] mb-1.5">Additional context</div>
               <textarea className="textarea text-xs" rows={3}
-                placeholder="Add context before pulling — e.g. key contacts, project codes, specific topics to search for."
+                placeholder="Add context before pulling — e.g. key contacts, project codes, specific topics to search for. Makes the Drive/email/Slack search more targeted."
                 value={es.additionalContext}
                 onChange={e=>setField(ws.id,'additionalContext',e.target.value)}
                 onBlur={()=>updateWs(ws.id,{additional_context:es.additionalContext})}/>
               <div className="text-[10px] text-[#bbb] mt-0.5">Auto-saves · included in all context pulls</div>
             </div>
 
+            {/* Sheet URL 1 */}
             <div>
               <div className="text-[10px] font-mono uppercase tracking-widest text-[#999] mb-1.5">Linked Google Sheet 1</div>
               <div className="flex gap-2">
-                <input className="input flex-1 text-xs" placeholder="Paste Google Sheet URL…"
+                <input className="input flex-1 text-xs"
+                  placeholder="Paste Google Sheet URL…"
                   value={es.sheetUrl}
                   onChange={e=>setField(ws.id,'sheetUrl',e.target.value)}
                   onBlur={()=>updateWs(ws.id,{sheet_url:es.sheetUrl})}/>
@@ -353,10 +382,12 @@ export default function WorkstreamsPage() {
               </div>
             </div>
 
+            {/* Sheet URL 2 */}
             <div>
               <div className="text-[10px] font-mono uppercase tracking-widest text-[#999] mb-1.5">Linked Google Sheet 2 (optional)</div>
               <div className="flex gap-2">
-                <input className="input flex-1 text-xs" placeholder="Paste a second Google Sheet URL…"
+                <input className="input flex-1 text-xs"
+                  placeholder="Paste a second Google Sheet URL…"
                   value={es.sheetUrl2}
                   onChange={e=>setField(ws.id,'sheetUrl2',e.target.value)}
                   onBlur={()=>updateWs(ws.id,{sheet_url_2:es.sheetUrl2})}/>
@@ -368,6 +399,7 @@ export default function WorkstreamsPage() {
               <div className="text-[10px] text-[#bbb] mt-0.5">Both sheets added to raw context and included in Summarise</div>
             </div>
 
+            {/* Pull buttons */}
             <div className="flex gap-2 flex-wrap">
               <button className="btn-secondary text-xs py-1.5 px-3" disabled={pulling===ws.id}
                 onClick={()=>pullContext(ws)}>
@@ -383,6 +415,7 @@ export default function WorkstreamsPage() {
               </button>
             </div>
 
+            {/* Raw context — collapsible, non-editable */}
             {ws.context_note&&(
               <details>
                 <summary className="text-xs cursor-pointer font-medium select-none text-[#999]">
@@ -395,6 +428,7 @@ export default function WorkstreamsPage() {
               </details>
             )}
 
+            {/* Editable briefing */}
             <div>
               <div className="flex items-center gap-2 mb-1.5">
                 <div className="text-[10px] font-mono uppercase tracking-widest" style={{color:'#F4631E'}}>
@@ -410,13 +444,14 @@ export default function WorkstreamsPage() {
               </div>
               <textarea className="textarea text-sm leading-relaxed" rows={4}
                 style={{background:'#FFF8F5',borderColor:briefingChanged?'#F4631E':'#FFD5C0'}}
-                placeholder="Pull context then hit ✦ Summarise — or type your own briefing."
+                placeholder="Pull context then hit ✦ Summarise — or type your own briefing. You can also just use Additional Context above and hit Summarise without pulling from Drive/email."
                 value={es.briefing}
                 onChange={e=>setField(ws.id,'briefing',e.target.value)}
                 onBlur={()=>{ if(briefingChanged) updateWs(ws.id,{briefing:es.briefing}) }}/>
               <div className="text-[10px] text-[#bbb] mt-0.5">Editable · auto-saves · flows into Weekly Agenda</div>
             </div>
 
+            {/* Tagged notes */}
             {wsNotes.length>0&&(
               <div>
                 <div className="text-[10px] font-mono uppercase tracking-widest text-[#999] mb-1.5">Notes ({wsNotes.length})</div>
@@ -442,6 +477,7 @@ export default function WorkstreamsPage() {
 
   return (
     <AppNav>
+      {/* Agenda banner */}
       <div className="rounded-lg px-5 py-4 mb-5 flex items-center gap-3 flex-wrap" style={{background:'#111',color:'white'}}>
         <div>
           <div className="text-xs font-mono uppercase tracking-widest mb-1" style={{color:'#F4631E'}}>Harry × George · Monday 4pm</div>
@@ -451,6 +487,7 @@ export default function WorkstreamsPage() {
         <button className="btn-primary font-bold" onClick={()=>router.push('/agenda')}>▶ Build Weekly Agenda</button>
       </div>
 
+      {/* Top bar */}
       <div className="flex items-center gap-2 mb-5 flex-wrap">
         <div>
           <span className="text-sm font-bold">{activeWs.length} active workstream{activeWs.length!==1?'s':''}</span>
@@ -458,11 +495,12 @@ export default function WorkstreamsPage() {
         </div>
         <div className="flex-1"/>
         <button className="btn-secondary text-xs" disabled={savingAll} onClick={saveAllToSheet}>
-          {savingAll?'Saving…':"📊 Save all to this week's Sheet"}
+          {savingAll?'Saving…':'📊 Save all to this week\'s Sheet'}
         </button>
         <button className="btn-primary font-bold" onClick={()=>setCreating(c=>!c)}>+ New workstream</button>
       </div>
 
+      {/* Create form */}
       {creating&&(
         <div className="card mb-5">
           <div className="font-black text-base mb-3">New workstream</div>
@@ -483,6 +521,7 @@ export default function WorkstreamsPage() {
         </div>
       )}
 
+      {/* Active workstreams */}
       {activeWs.length===0?(
         <div className="text-center py-16">
           <div className="text-3xl mb-3">⚡</div>
@@ -503,6 +542,7 @@ export default function WorkstreamsPage() {
         )
       })}
 
+      {/* Complete/Archived */}
       {closedWs.length>0&&(
         <div className="mt-4">
           <button className="flex items-center gap-2 text-sm text-[#999] font-medium mb-3 cursor-pointer hover:text-black"
