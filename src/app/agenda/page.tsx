@@ -135,7 +135,7 @@ export default function AgendaPage() {
 
   // ── Sync to Sheet ──
   async function syncToSheet() {
-    const accessToken = (session as any)?.gAccessToken
+    const accessToken = (session as any)?.googleToken
     if (!accessToken) { showToast('No Google access token — sign out and back in'); return }
     setSyncing(true); showToast('Syncing to Sheet…')
 
