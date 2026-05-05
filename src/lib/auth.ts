@@ -14,7 +14,8 @@ export const authOptions: NextAuthOptions = {
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
       authorization: {
         params: {
-          scope: ['openid','email','profile',
+          scope: [
+            'openid', 'email', 'profile',
             'https://www.googleapis.com/auth/gmail.readonly',
             'https://www.googleapis.com/auth/gmail.compose',
             'https://www.googleapis.com/auth/drive.readonly',
@@ -29,10 +30,10 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, account, profile }: any) {
       if (account) {
-        token.gToken = account.access_token
-        token.gRefresh = account.refresh_token
-        token.gExpiry = account.expires_at
-        token.gId = profile?.sub
+        token._gat = account.access_token
+        token._grt = account.refresh_token
+        token._gid = profile?.sub
+        token._gexp = account.expires_at
       }
       return token
     },
@@ -43,19 +44,18 @@ export const authOptions: NextAuthOptions = {
             email: session.user.email,
             name: session.user.name,
             image: session.user.image,
-            google_id: token.gId,
+            google_id: token._gid,
           }, { onConflict: 'email' })
         }
       } catch (e) {
         console.error('Upsert error:', e)
       }
-      session.accessToken = token.gToken
-      session.refreshToken = token.gRefresh
-      session.googleId = token.gId
+      session.gAccessToken = token._gat
+      session.gGoogleId = token._gid
       return session
     },
     async signIn({ profile }: any) {
-      const email = profile?.email ?? ''
+      const email = (profile as any)?.email ?? ''
       return email.endsWith('@jubelbeer.com') || email === 'george@jubelbeer.com'
     },
   },
