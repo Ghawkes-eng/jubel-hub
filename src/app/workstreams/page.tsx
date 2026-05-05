@@ -49,7 +49,7 @@ async function fetchGmailContext(accessToken: string, query: string): Promise<st
         snippets.push(`"${hdrs.Subject||'(no subject)'}" from ${hdrs.From||'unknown'} — ${m.snippet||''}`)
       }
     }
-    return snippets.join('\n')
+    return snippets.join(String.fromCharCode(10))
   } catch (e: any) {
     return `Gmail exception: ${e.message}`
   }
@@ -71,7 +71,7 @@ async function fetchDriveContext(accessToken: string, wsName: string): Promise<s
     if (!files.length) return `No Drive files found mentioning "${wsName}"`
     return files.map((f: any) =>
       `"${f.name}" — modified ${f.modifiedTime ? new Date(f.modifiedTime).toLocaleDateString('en-GB') : 'unknown'}`
-    ).join('\n')
+    ).join(String.fromCharCode(10))
   } catch (e: any) {
     return `Drive exception: ${e.message}`
   }
