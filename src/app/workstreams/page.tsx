@@ -192,7 +192,7 @@ export default function WorkstreamsPage() {
 
   // ── Pull context — runs in browser, uses session.googleToken directly ──
   async function pullContext(ws: any) {
-    const accessToken = (session as any)?.googleToken
+    const accessToken = (session as any)?.user?.gToken
     if (!accessToken) { showToast('No Google access token — sign out and back in'); return }
 
     setPulling(ws.id)
@@ -231,7 +231,7 @@ export default function WorkstreamsPage() {
   }
 
   async function pullSheet(ws: any) {
-    const accessToken = (session as any)?.googleToken
+    const accessToken = (session as any)?.user?.gToken
     const es = getES(ws.id)
     if (!es.sheetUrl) { showToast('Add a Sheet URL to this workstream first'); return }
     if (!accessToken) { showToast('No Google access token — sign out and back in'); return }
@@ -250,7 +250,7 @@ export default function WorkstreamsPage() {
   }
 
   async function pullSheet2(ws: any) {
-    const accessToken = (session as any)?.googleToken
+    const accessToken = (session as any)?.user?.gToken
     const es = getES(ws.id)
     if (!es.sheetUrl2) { showToast('Add a second Sheet URL first'); return }
     if (!accessToken) { showToast('No Google access token — sign out and back in'); return }
