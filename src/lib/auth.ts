@@ -72,9 +72,9 @@ export const authOptions: NextAuthOptions = {
     },
 
     async session({ session, token }) {
-      session.accessToken  = token.accessToken  as string
-      session.refreshToken = token.refreshToken as string
-      session.googleId     = token.googleId     as string
+    (session as any).accessToken  = token.accessToken
+(session as any).refreshToken = token.refreshToken
+(session as any).googleId     = token.googleId
       if (token.error) (session as any).error = token.error
 
       if (session.user?.email) {
