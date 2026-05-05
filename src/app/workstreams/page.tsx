@@ -124,8 +124,7 @@ async function fetchSheetContext(accessToken: string, sheetUrl: string, wsName: 
       ...dataRows.map(row =>
         headers.map((h, i) => `${h}: ${row[i] || ''}`).filter((_,i) => row[i]).join(' | ')
       ).filter(Boolean)
-    ].join('
-')
+    ].join(String.fromCharCode(10))
 
     return formatted
   } catch (e: any) {
