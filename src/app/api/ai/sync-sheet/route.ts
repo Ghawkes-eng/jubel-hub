@@ -10,7 +10,7 @@ export async function POST(req: Request) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { date, summary, workstreams, actions } = await req.json()
-  const accessToken = session.googleToken
+  const accessToken = (session as any).user?.gToken
 
   if (!accessToken) return NextResponse.json({ error: 'No Google access token' }, { status: 401 })
 
