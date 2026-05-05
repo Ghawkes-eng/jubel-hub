@@ -18,7 +18,6 @@ const CONTACTS = [
   { id:'alex',  name:'Alex',   email:'alex@jubelbeer.com',   role:'Festivals & Events Manager'  },
   { id:'emily', name:'Emily',  email:'emily@jubelbeer.com',  role:'Music & Culture'             },
   { id:'sam',   name:'Sam',    email:'samw@jubelbeer.com',   role:'Brand Events & Activations'  },
-  { id:'max',   name:'Max',    email:'max@jubelbeer.com',    role:'Sports & Lifestyle FM'       },
 ]
 
 type Phase = 'select' | 'build' | 'active' | 'wrapup'
@@ -136,7 +135,7 @@ export default function AgendaPage() {
 
   // ── Sync to Sheet ──
   async function syncToSheet() {
-    const accessToken = (session as any)?.accessToken
+    const accessToken = (session as any)?.gAccessToken
     if (!accessToken) { showToast('No Google access token — sign out and back in'); return }
     setSyncing(true); showToast('Syncing to Sheet…')
 
