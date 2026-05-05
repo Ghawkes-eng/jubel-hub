@@ -30,32 +30,31 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, account, profile }: any) {
       if (account) {
-        token._gat = account.access_token
-        token._grt = account.refresh_token
-        token._gid = profile?.sub
-        token._gexp = account.expires_at
+        token.googleToken = account.access_token
+        token.googleId = profile?.sub
       }
       return token
     },
     async session({ session, token }: any) {
+      // Upsert user — wrapped so any error never breaks the session
       try {
         if (session?.user?.email) {
           await supabase.from('users').upsert({
             email: session.user.email,
             name: session.user.name,
             image: session.user.image,
-            google_id: token._gid,
+            google_id: token.googleId,
           }, { onConflict: 'email' })
         }
-      } catch (e) {
-        console.error('Upsert error:', e)
-      }
-      session.gAccessToken = token._gat
-      session.gGoogleId = token._gid
-      return session
+      } catch (_) {}
+      // Attach Google token to session — using spread to avoid mutation issues
+      return Object.assign({}, session, {
+        googleToken: token.googleToken,
+        googleId: token.googleId,
+      })
     },
     async signIn({ profile }: any) {
-      const email = (profile as any)?.email ?? ''
+      const email = profile?.email ?? ''
       return email.endsWith('@jubelbeer.com') || email === 'george@jubelbeer.com'
     },
   },
