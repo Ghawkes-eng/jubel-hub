@@ -1,0 +1,110 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --orange:  #F4631E;
+  --orange-light: #FFF0E8;
+  --black:   #111111;
+  --white:   #FFFFFF;
+  --grey:    #F5F5F5;
+  --muted:   #6B6B6B;
+  --border:  #E5E5E5;
+  --ink:     #111111;
+}
+
+body {
+  background: #F5F5F5;
+  color: var(--black);
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+@layer components {
+  .btn-primary {
+    @apply px-4 py-2 rounded text-sm font-bold transition-all inline-flex items-center gap-1.5 cursor-pointer;
+    background: #F4631E;
+    color: white;
+  }
+  .btn-primary:hover { background: #D4521A; }
+  .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  .btn-secondary {
+    @apply bg-white text-black border border-[#E5E5E5] px-4 py-2 rounded text-sm font-medium hover:bg-[#F5F5F5] transition-colors inline-flex items-center gap-1.5 cursor-pointer;
+  }
+
+  .btn-ghost {
+    @apply text-[#6B6B6B] text-xs px-2 py-1 rounded hover:text-black hover:bg-[#E5E5E5] transition-colors inline-flex items-center gap-1 cursor-pointer bg-transparent border-none;
+  }
+
+  .btn-danger {
+    @apply text-sm px-4 py-2 rounded font-bold inline-flex items-center gap-1.5 cursor-pointer;
+    background: #111111;
+    color: white;
+  }
+  .btn-danger:hover { background: #333; }
+
+  .card {
+    @apply bg-white border border-[#E5E5E5] rounded-lg p-4 mb-3;
+  }
+
+  .card-soft {
+    @apply bg-[#F9F9F9] border border-[#E5E5E5] rounded-lg p-4 mb-2;
+  }
+
+  .input {
+    @apply w-full bg-white border border-[#E5E5E5] rounded px-3 py-2 text-sm text-black focus:outline-none focus:ring-2 focus:border-[#F4631E];
+    --tw-ring-color: #F4631E;
+  }
+
+  .textarea {
+    @apply w-full bg-white border border-[#E5E5E5] rounded px-3 py-2 text-sm text-black focus:outline-none focus:ring-2 resize-y;
+    --tw-ring-color: #F4631E;
+  }
+
+  .select {
+    @apply bg-white border border-[#E5E5E5] rounded px-2 py-1.5 text-xs text-black cursor-pointer focus:outline-none;
+  }
+
+  .label {
+    @apply text-[10px] font-mono uppercase tracking-widest text-[#999] mb-1 block;
+  }
+
+  .tag-orange {
+    @apply inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium;
+    background: #FFF0E8;
+    color: #F4631E;
+  }
+
+  .tag-black {
+    @apply inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium;
+    background: #111;
+    color: white;
+  }
+
+  .tag-grey {
+    @apply inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full;
+    background: #F0F0F0;
+    color: #555;
+  }
+}
+
+/* Diagonal cut accent — Jubel brand asset */
+.jubel-cut {
+  position: relative;
+  overflow: hidden;
+}
+.jubel-cut::before {
+  content: '';
+  position: absolute;
+  top: 0; right: -20px;
+  width: 40px; height: 100%;
+  background: #F4631E;
+  transform: skewX(-10deg);
+  opacity: 0.15;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: .4 }
+  50% { opacity: 1 }
+}
+.live-dot { animation: pulse 1.5s infinite; }
