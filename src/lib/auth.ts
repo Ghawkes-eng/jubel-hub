@@ -71,26 +71,27 @@ export const authOptions: NextAuthOptions = {
       return refreshAccessToken(token)
     },
 
-    async session({ session, token }) {
-    (session as any).accessToken  = token.accessToken
-(session as any).refreshToken = token.refreshToken
-(session as any).googleId     = token.googleId
-      if (token.error) (session as any).error = token.error
-
-     if (session.user?.email) {
-  try {
-    await supabase.from('users').upsert({
-      email:     session.user.email,
-      name:      session.user.name,
-      image:     session.user.image,
-      google_id: (session as any).googleId,
-    }, { onConflict: 'email' })
-  } catch (e) {
-    console.error('User upsert failed:', e)
+   async session({ session, token }) {
+  if (session.user?.email) {
+    try {
+      await supabase.from('users').upsert({
+        email:     session.user.email,
+        name:      session.user.name,
+        image:     session.user.image,
+        google_id: token.googleId as string,
+      }, { onConflict: 'email' })
+    } catch (e) {
+      console.error('User upsert failed:', e)
+    }
   }
-}
-return session
-    },
+  return {
+    ...session,
+    accessToken:  token.accessToken as string,
+    refreshToken: token.refreshToken as string,
+    googleId:     token.googleId as string,
+    error:        token.error as string,
+  }
+},
 
     async signIn({ profile }) {
       const email = profile?.email ?? ''
