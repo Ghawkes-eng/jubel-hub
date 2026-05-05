@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { NextResponse } from 'next/server'
-import { authOptions } from '../../auth/[...nextauth]/route'
+import { authOptions } from '@/lib/auth'
 import { google } from 'googleapis'
 
 const SHEET_ID = process.env.NEXT_PUBLIC_SHEET_ID || '1WVmXCL9mf7zLCT-gRtBCyUu9A7xLlPikkJ5lYYsbuXc'
