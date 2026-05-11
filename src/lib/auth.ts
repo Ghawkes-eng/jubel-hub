@@ -15,9 +15,9 @@ export const authOptions: NextAuthOptions = {
       },
     }),
   ],
-  callbacks: {
+ callbacks: {
     async jwt({ token, account }: any) {
-      if (account) {
+      if (account?.access_token) {
         token.gToken = account.access_token
       }
       return token
@@ -32,6 +32,7 @@ export const authOptions: NextAuthOptions = {
       const email = profile?.email ?? ''
       return email.endsWith('@jubelbeer.com') || email === 'george@jubelbeer.com'
     },
+  },
   },
   pages: {
     signIn: '/auth/signin',
