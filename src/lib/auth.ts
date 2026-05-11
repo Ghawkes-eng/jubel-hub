@@ -16,6 +16,18 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
+    async jwt({ token, account }: any) {
+      if (account) {
+        token.gToken = account.access_token
+      }
+      return token
+    },
+    async session({ session, token }: any) {
+      if (session?.user) {
+        session.user.gToken = token.gToken
+      }
+      return session
+    },
     async signIn({ profile }: any) {
       const email = profile?.email ?? ''
       return email.endsWith('@jubelbeer.com') || email === 'george@jubelbeer.com'
