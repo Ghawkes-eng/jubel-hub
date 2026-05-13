@@ -359,7 +359,7 @@ export default function AgendaPage() {
               {syncing?'Syncing…':syncDone?'✓ Sheet synced':'📊 Sync to Sheet'}
             </button>
             <button className="btn-primary font-bold text-sm" disabled={draftingEmail} onClick={draftEmail}>
-              {draftingEmail?'Drafting…':emailDone?'✉ Draft saved':'✉ `✉ Draft email to ${selectedContact?.name || 'Harry'}`}
+              {draftingEmail?'Drafting…':emailDone?'✉ Draft saved':'✉ Draft email to '+(selectedContact?.name || 'Harry')}
             </button>
           </div>
         </div>
