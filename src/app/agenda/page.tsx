@@ -125,7 +125,7 @@ export default function AgendaPage() {
 
     const res = await fetch('/api/ai/generate-summary', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({ content: sections + adHocText, date: new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'}) })
+      body:JSON.stringify({ content: sections + adHocText,contactName: selectedContact?.name || 'Harry', date: new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'}) })
     })
     const d = await res.json()
     if (d.text) setSummary(d.text)
@@ -359,7 +359,7 @@ export default function AgendaPage() {
               {syncing?'Syncing…':syncDone?'✓ Sheet synced':'📊 Sync to Sheet'}
             </button>
             <button className="btn-primary font-bold text-sm" disabled={draftingEmail} onClick={draftEmail}>
-              {draftingEmail?'Drafting…':emailDone?'✉ Draft saved':'✉ Draft email to Harry'}
+              {draftingEmail?'Drafting…':emailDone?'✉ Draft saved':'✉ `✉ Draft email to ${selectedContact?.name || 'Harry'}`}
             </button>
           </div>
         </div>
@@ -511,7 +511,7 @@ export default function AgendaPage() {
           <div className="flex items-center gap-2 mb-3 pb-2" style={{borderBottom:'2px solid #F4631E44'}}>
             <span className="w-3 h-3 rounded-full" style={{background:'#F4631E'}}/>
             <span className="font-black text-base uppercase tracking-wide">Ad-hoc discussions</span>
-            <span className="text-xs text-[#999]">Harry raised these during the meeting</span>
+            <span className="text-xs text-[#999]">{selectedContact?.name || 'Harry'} raised these during the meeting</span>
           </div>
 
           {adHocItems.map(item=>(
