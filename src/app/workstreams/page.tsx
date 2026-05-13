@@ -480,7 +480,7 @@ export default function WorkstreamsPage() {
       {/* Agenda banner */}
       <div className="rounded-lg px-5 py-4 mb-5 flex items-center gap-3 flex-wrap" style={{background:'#111',color:'white'}}>
         <div>
-          <div className="text-xs font-mono uppercase tracking-widest mb-1" style={{color:'#F4631E'}}>Harry × George · Monday 4pm</div>
+          <div className="text-xs font-mono uppercase tracking-widest mb-1" style={{color:'#F4631E'}}>Next catch-up · check Weekly Agenda</div>
           <div className="font-bold text-sm">Briefings ready? Build your Weekly Agenda.</div>
         </div>
         <div className="flex-1"/>
